@@ -1,8 +1,7 @@
-
 Blombo
 -------
 
-Tread redis-server like a deep ruby hash.
+Treat redis-server like a deep ruby hash.
 
 
 Example usage
