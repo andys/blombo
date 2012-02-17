@@ -6,7 +6,13 @@ class Blombo
   attr_reader :blombo_parent
 
   class << self
-    attr_accessor :redis
+    attr_writer :redis
+    def redis
+      Thread.current[:blombo_redis] ||= Redis.new(Hash[*([
+        :path, :host, :port, :db, :timeout, :password, :logger
+      ].map {|f| [f, @redis.client.send(f)] }.flatten)])
+    end
+
     def is_marshalled?(str)
       Marshal.dump(nil)[0,2] == str[0,2] # Marshall stores its version info in first 2 bytes
     end
