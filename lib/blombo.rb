@@ -26,6 +26,17 @@ class Blombo
         str
       end
     end
+    def [](name)
+      new(name)
+    end
+    def method_missing(meth, *params, &bl)
+      if params.empty? && meth =~ /^[a-z_][a-z0-9_]*$/i
+        new meth
+      else
+        super
+      end
+    end
+
   end
   
   def redis
@@ -33,8 +44,18 @@ class Blombo
   end
 
   def initialize(name, blombo_parent=nil)
-    @name = name
+    @name = name.to_s
     @blombo_parent = blombo_parent
+  end
+  
+  def with_timeout(secs)
+    begin
+      Timeout.timeout(secs) do
+        yield(self)
+      end
+    rescue Timeout::Error
+      false
+    end
   end
 
   def <=>(other)
@@ -89,6 +110,10 @@ class Blombo
 
   def values
     self.class.redis.hvals(blombo_key).map {|v| self.class.from_redis_val(v) }
+  end
+  
+  def clear
+    redis.del(blombo_key)
   end
   
   def type

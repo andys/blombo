@@ -98,4 +98,12 @@ class TestBlombo < Test::Unit::TestCase
     assert_equal 'list', @blombo.listy.type
   end
   
+  def test_new_by_square_brackets
+    assert_equal Blombo.new(:asdf), Blombo[:asdf]
+  end
+
+  def test_new_by_method
+    assert_equal Blombo.asdf, Blombo.asdf
+  end
+  
 end
