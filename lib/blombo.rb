@@ -76,18 +76,9 @@ class Blombo
     @name
   end
 
-  def []=(key, val)
-    redis.hset(blombo_key, key.to_s, self.class.to_redis_val(val))
-  end
   
   def defined?(key)
     redis.exists(key.to_s)
-  end
-
-  def [](key)
-    if(val = redis.hget(blombo_key, key.to_s))
-      self.class.from_redis_val(val)
-    end
   end
 
   def nil?
@@ -99,23 +90,31 @@ class Blombo
   end
 
   def to_hash
-    redis.hgetall(blombo_key)
+    keys.inject({}) {|h,k| h.merge!(k => self[k]) }
   end
 
   def each(*args, &bl)
-    to_hash.each(*args, &bl)
+    if(type == 'list')
+      lrange(0, -1).map {|va| each(*args, &bl) }
+    else
+      to_hash.each(*args, &bl)
+    end
   end
 
   def to_a
-    redis.hgetall(blombo_key).to_a
+    if(type == 'list')
+      lrange(0, -1).map {|val| self.class.from_redis_val(val) }
+    else
+      to_hash.to_a
+    end
   end
 
   def keys
-    self.class.redis.hkeys(blombo_key)
+    hkeys
   end
 
   def values
-    self.class.redis.hvals(blombo_key).map {|v| self.class.from_redis_val(v) }
+    hvals.map {|v| self.class.from_redis_val(v) }
   end
   
   def clear
@@ -130,14 +129,96 @@ class Blombo
     if Blombo.redis.respond_to?(meth)
       Blombo.redis.send(meth, blombo_key, *params, &bl)
     elsif params.empty? && meth =~ /^[a-z_][a-z0-9_]*$/i
-      Blombo.new("#{@name}:#{meth}", self)
+      key(meth)
+    elsif params.length == 1 && meth =~ /^(.*)=$/
+      if Hash === params[0]
+        key($1).del
+        params[0].each {|k,val| key($1)[k] = val }
+      elsif Enumerable === params[0]
+        key($1).del
+        params[0].each {|val| key($1).push(val) }
+      else
+        raise TypeError.new('Blombo setters must be sent a Hash or Array')
+      end
     else
       super(meth, *params, &bl)
     end
   end
+  
+  def key(*args)
+    Blombo.new("#{@name}:#{args.join(':')}", self)
+  end
 
   def blombo_children
-    self.class.redis.keys("#{blombo_key}:*").map {|k| Blombo.new(k.gsub(/^blombo:/,''), self) }
+    blombo_children_names.map {|k| Blombo.new(k, self) }
+  end
+
+  def blombo_children_names
+    self.class.redis.keys("#{blombo_key}:*").map {|k| k.gsub(/^blombo:/,'') }
+  end
+  
+  
+  def <<(x)
+    push(x)
+  end
+  
+  def push(*x)
+    rpush(*(x.map {|val| self.class.to_redis_val(val) }))
+  end
+  
+  def unshift(*x)
+    lpush(*(x.map {|val| self.class.to_redis_val(val) }))
+  end
+  
+  def first
+    if type == 'list'
+      self[0]
+    elsif(k = keys.first)
+      [k, self[k]]
+    end
+  end  
+
+  def last
+    if type == 'list'
+      self[-1]
+    elsif(k = keys.last)
+      [k, self[k]]
+    end
+  end  
+  
+  def length
+    llen
+  end
+  
+  def []=(key, val)
+    if type == 'list'
+      lset(key.to_i, self.class.to_redis_val(val))
+    else
+      hset(key.to_s, self.class.to_redis_val(val))
+    end
+  end
+
+  def [](key)
+    val = if(type == 'list')
+      lindex(key.to_i)
+    else
+      hget(key.to_s)
+    end
+    self.class.from_redis_val(val) if val
+  end
+
+  def shift
+    val = lpop
+    self.class.from_redis_val(val) if val
+  end
+
+  def pop
+    val = rpop
+    self.class.from_redis_val(val) if val
+  end
+  
+  def to_s
+    "#<#{blombo_key}>"
   end
   
 end

@@ -1,4 +1,4 @@
-Blombo
+kBlombo
 -------
 
 Treat redis-server like a deep ruby hash.
@@ -47,23 +47,30 @@ range of ruby hash methods:
 
 Blombo only saves the object back into redis if the []= method is used. 
 Assignment must always be used to save to db.  This means you should
-maintain ruby objects like arrays carefully:
+maintain ruby objects carefully:
 
-  $blombo.servers[:list] = ["web1"]
-  $blombo.servers[:list] << "web2"
-  $blombo.servers[:list]
-  #=> ["web1"]               #oops
+  $blombo[:servers] = {:name => 'web1'}
+  $blombo[:servers].merge!(:ip => '10.0.0.1')
+  $blombo[:servers]  # => {:name=>"web1"}   # oops
 
-  $blombo.servers[:list] += ["web2"]
-  $blombo.servers[:list]
-  #=> ["web1", "web2"]       #ahh!
-  
+
+Redis List types
+----------------
+
+Treat blombo like an array and it'll marshal data to a redis list type.
+
+  $blombo.servers = [1,2]
+  $blombo.servers << 3
+  $blombo.servers.shift   # => 1
+  $blombo.servers.last    # => 3
+
+
 
 Other Redis types
 -----------------
 
-What if I don't want a Redis hash?  Thats OK - Blombo passes through redis
-commands curried with the key as the first parameter:
+What if I need a specific redis command?  Thats OK - Blombo passes through
+redis commands curried with the key as the first parameter:
 
 This:    $blombo.joblist.rpush('job1')
 Equals:  $redis.rpush('blombo:ServerApp:joblist', 'job1')

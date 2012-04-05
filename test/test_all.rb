@@ -11,7 +11,7 @@ class TestBlombo < Test::Unit::TestCase
     @blombo[:flibble] = "test123"
     @blombo['derp'] = 'test321'
     @blombo.deep[:firstname] = 'Herp'
-    @blombo.deep[:lastname] = 'Derpington'
+    @blombo.key('deep')[:lastname] = 'Derpington'
   end
   
   def test_defined
@@ -86,11 +86,21 @@ class TestBlombo < Test::Unit::TestCase
     assert_equal nil, @blombo.marshaltest[:nil]
   end
   
-  def test_redis_ops
-    @blombo.listy.rpush('job1')
-    @blombo.listy.rpush('job2')
-    assert_equal 2, $redis.llen('blombo:test:listy')
-    assert_equal ['job1', 'job2'], @blombo.listy.lrange(0, -1)
+  def test_redis_list_ops
+    @blombo.listy.push('job2')
+    @blombo.listy << 'job3'
+    @blombo.listy.unshift('job1')
+    assert_equal 3, $redis.llen('blombo:test:listy')
+    assert_equal ['job1', 'job2', 'job3'], @blombo.listy.to_a
+    assert_equal 'job1', @blombo.listy.first
+    assert_equal 'job3', @blombo.listy.last
+    assert_equal 'job1', @blombo.listy.shift
+    assert_equal 'job3', @blombo.listy.pop
+    assert_equal 1, @blombo.listy.length
+    
+    x = {['a', 'complex'] => 'type'}
+    @blombo.listy[0] = x
+    assert_equal x, @blombo.listy[0]
   end
   
   def test_redis_list_type
@@ -104,6 +114,23 @@ class TestBlombo < Test::Unit::TestCase
 
   def test_new_by_method
     assert_equal Blombo.asdf, Blombo.asdf
+  end
+  
+  def test_to_s
+    assert_equal '#<blombo:test>', @blombo.to_s
+  end
+  
+  def test_hash_setter
+
+    @blombo.myhash = {:a => 1}
+    assert_equal 1, @blombo.myhash[:a]
+  end
+  
+  def test_array_setter
+    @blombo.myarray << 'test'
+    @blombo.myarray = [:one, :two]
+    assert_equal :one, @blombo.myarray.first
+    assert_equal :two, @blombo.myarray.last
   end
   
 end
