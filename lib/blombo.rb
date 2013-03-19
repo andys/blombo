@@ -222,20 +222,3 @@ class Blombo
   end
   
 end
-
-
-=begin
-
-blombo = Blombo.new(redis server details)
-
-
-
-blombo.blah = {'hello' => 'world'}
-blombo.blah = OpenStruct(..)
-blombo.blah = activerecord model
-
-May as well assign each object a uniq id (using redis counters?)
-to allow referencing / assocations
-
-
-=end
